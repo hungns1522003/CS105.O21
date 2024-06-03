@@ -1,0 +1,85 @@
+:root {
+  --color: #fff;
+}
+
+header {
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 10px;
+  display: flex;
+}
+
+header .project-name {
+  font-size: 20px;
+}
+
+header .option-bar {
+  justify-content: space-between;
+  column-gap: 20px;
+  display: flex;
+}
+
+header .option-bar .dropdown {
+  width: 125px;
+}
+
+header .option-bar .dropdown .content p {
+  cursor: pointer;
+  text-align: center;
+  height: auto;
+  font-size: 20px;
+}
+
+header .option-bar .dropdown .content:hover {
+  background: #fff;
+}
+
+header .option-bar .dropdown p .bx {
+  font-size: 15px;
+}
+
+header .option-bar button {
+  background-color: #fff;
+  border: none;
+}
+
+header .option-bar .dropdown .drop-content {
+  background-color: #e2e1e1;
+  width: 125px;
+  padding-inline-start: 0;
+  list-style: none;
+  display: none;
+  position: absolute;
+  top: 6%;
+}
+
+header .option-bar .dropdown .drop-content li {
+  font-size: 15px;
+}
+
+header .option-bar .dropdown .drop-content li:hover {
+  background: #cbcbcb;
+}
+
+header .option-bar .dropdown:hover .drop-content {
+  display: block;
+}
+
+header .option-bar .dropdown:hover .content {
+  background-color: #e2e1e1;
+}
+
+#container {
+  position: relative;
+}
+
+.transform #button {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+.transform button {
+  margin-right: 10px;
+}
+/*# sourceMappingURL=index.b797997c.css.map */

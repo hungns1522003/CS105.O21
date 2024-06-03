@@ -248,5 +248,9 @@ function getBackgroundAllPoints() {
     return points;
 }
 
+
+
+
+
 init();
 setupEventListeners();
