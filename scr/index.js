@@ -1,60 +1,65 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { GUI } from 'dat.gui';
+import { randFloat } from 'three/src/math/MathUtils.js';
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
 const controls = new OrbitControls(camera, renderer.domElement);
-const transforms = new TransformControls(camera,renderer.domElement);
+const transforms = new TransformControls(camera, renderer.domElement);
 const array_mesh = [];
+let rotateAnimation = false;
+let upDownAnimation = false;
+let scaleAnimation = false;
+let orbitAnimation = false;
+function init() {
+    var animationRunning = false;
+    controls.update();
 
-function init(){
-	
-	controls.update();
+    transforms.size = 0.5;
+    transforms.addEventListener('change', () => renderer.render(scene, camera));
+    transforms.addEventListener('dragging-changed', function (event) {
+        controls.enabled = !event.value;
+    });
+    transforms.mode = 'translate';
+    scene.add(transforms);
 
-	transforms.size = 0.5;
-	transforms.addEventListener('change', () => renderer.render(scene,camera));
-	transforms.addEventListener('dragging-changed', function(event){
-		controls.enabled = !event.value;
-	});
-	transforms.mode = 'translate';	
-	scene.add(transforms);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-	renderer.setSize(window.innerWidth, window.innerHeight);
-	document.body.appendChild(renderer.domElement);
+    const pointLight = new THREE.PointLight(0xffffff, 100, 0);
+    pointLight.castShadow = true;
+    pointLight.position.set(10, 10, 10);
+    scene.add(pointLight);
 
-	const pointLight = new THREE.PointLight(0xffffff, 100, 0);
-	pointLight.castShadow = true;
-	pointLight.position.set(10, 10, 10);
-	scene.add(pointLight);
+    camera.position.x = 1;
+    camera.position.y = 2;
+    camera.position.z = 5;
 
-	camera.position.x = 1;
-	camera.position.y = 2;
-	camera.position.z = 5;
+    const translateBtn = document.getElementById('translateBtn');
+    // const scaleBtn = document.getElementById('scalseBtn');
+    // const rotateBtn = document.getElementById('rotateBtn');
 
-	const translateBtn = document.getElementById('translateBtn');
-	const scaleBtn = document.getElementById('scalseBtn');
-	const rotateBtn = document.getElementById('rotateBtn');
-	
-	// make interface
-	translateBtn.addEventListener('click', function () {
+    // make interface
+    translateBtn.addEventListener('click', function () {
         transforms.mode = 'translate';
         setButtonActive(translateBtn);
     });
-    scaleBtn.addEventListener('click', function () {
-        transforms.mode = 'scale';
-        setButtonActive(scaleBtn);
-    });
-    rotateBtn.addEventListener('click', function () {
-        transforms.mode = 'rotate';
-        setButtonActive(rotateBtn);
-    });
-	//-----------
+    // scaleBtn.addEventListener('click', function () {
+    //     transforms.mode = 'scale';
+    //     setButtonActive(scaleBtn);
+    // });
+    // rotateBtn.addEventListener('click', function () {
+    //     transforms.mode = 'rotate';
+    //     setButtonActive(rotateBtn);
+    // });
+    //-----------
 
 
 
-	const raycaster = new THREE.Raycaster();
+    const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
     const onDocumentMouseDown = (event) => {
@@ -76,35 +81,77 @@ function init(){
 
     document.addEventListener('mousedown', onDocumentMouseDown, false);
 
-	// ----------
-	let angle = 0;
+
+    // ----------
+    let angle = 0;
     const radius = 5;
 
-	function animate(){
-		requestAnimationFrame(animate);
+    function animate() {
+        requestAnimationFrame(animate);
 
-		angle += 0.01; 
+        angle += 0.01;
         pointLight.position.x = radius * Math.cos(angle);
         pointLight.position.z = radius * Math.sin(angle);
-        pointLight.position.y = 2; 
+        pointLight.position.y = 2;
 
-		controls.update();
-		renderer.render(scene,camera);
-	}	
+        if (rotateAnimation || upDownAnimation || scaleAnimation || orbitAnimation) {
+            scene.children.forEach(mesh => {
+                if (mesh instanceof THREE.Mesh) {
+                    if (rotateAnimation) {
+                        mesh.rotation.x += 0.01;
+                        mesh.rotation.y += 0.01;
+                    }
+                    if (upDownAnimation) {
+                        mesh.position.y = 10 * Math.abs(Math.sin(Date.now() * 0.001));
+                    }
+                    if (scaleAnimation) {
+                        const scale = 1 + 0.5 * Math.sin(Date.now() * 0.001);
+                        mesh.scale.set(scale, scale, scale);
+                    }
+                    if (orbitAnimation) {
+                        const time = Date.now() * 0.001;
+                        const radius = 5; // bán kính quỹ đạo
+                        mesh.position.x = radius * Math.cos(time);
+                        mesh.position.z = radius * Math.sin(time);
+                    }
+                }
+            });
+        }
 
-	var backgroundAllPoints = getBackgroundAllPoints();
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    var backgroundAllPoints = getBackgroundAllPoints();
     scene.add(backgroundAllPoints);
 
-	//------------------------
-	animate();	
+    //------------------------
+    animate();
+
+    document.getElementById('rotate').addEventListener('change', function () {
+        rotateAnimation = this.checked;
+    });
+
+    document.getElementById('updown').addEventListener('change', function () {
+        upDownAnimation = this.checked;
+    });
+
+    document.getElementById('scale').addEventListener('change', function () {
+        scaleAnimation = this.checked;
+    });
+    document.getElementById('orbit').addEventListener('change', function () {
+        orbitAnimation = this.checked;
+    });
 }
 
 
+
 function addGeometry(geometry) {
-    const material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff , side: THREE.DoubleSide});
+    const material = new THREE.MeshBasicMaterial({ color: Math.random() * 0xffffff, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
     array_mesh.push(mesh);
+    return mesh
 }
 
 
@@ -174,8 +221,8 @@ function handleGeometryClick(event) {
             break;
         case 'Polyhedron':
             const verticesOfCube = [
-                -1, -1, -1,  1, -1, -1,  1, 1, -1, -1, 1, -1,
-                -1, -1, 1,  1, -1, 1,  1, 1, 1, -1, 1, 1,
+                -1, -1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1,
+                -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1,
             ];
             const indicesOfFaces = [
                 2, 1, 0, 0, 3, 2,
@@ -223,6 +270,7 @@ function handleGeometryClick(event) {
         default:
             console.warn(`Geometry type "${geometryType}" not recognized.`);
     }
+
 }
 
 
@@ -248,6 +296,36 @@ function getBackgroundAllPoints() {
     return points;
 }
 
+function RotateObjectAnimation(object, scene, camera, renderer) {
+
+    function animate() {
+
+        object.forEach(mesh => {
+
+            if (mesh) {
+                step = 0;
+                mesh.rotation.x += 0.01;
+                mesh.rotation.y += 0.01;
+                if (document.getElementById("updown").checked == true) {
+                    step += 0.005;
+                    mesh.position.y = 10 * Math.abs(Math.sin(step));
+                }
+            }
+
+        });
+        renderer.render(scene, camera);
+    }
+    function startAnimation() {
+        renderer.setAnimationLoop(animate);
+    }
+    function stopAnimation() {
+        renderer.setAnimationLoop(null);
+    }
+    return {
+        start: startAnimation,
+        stop: stopAnimation
+    };
+}
 
 
 
