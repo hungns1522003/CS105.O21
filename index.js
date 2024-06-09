@@ -52,27 +52,76 @@ function init() {
   gridHelper.position.y = 0;
   scene.add(gridHelper);
 
-  // Light
-  var pointLight = getPointLight(0xffffff, 100, 100);
+   // Light
+   var pointLight = getPointLight(0xffffff, 100, 100);
 
-  // Khởi tạo một đối tượng hình cầu đại diện cho PointLight
-  var sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-  var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  var pointLightSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-  pointLightSphere.position.copy(pointLight.position);
+   // Create a sphere to help visualize the position of the point light
+   var sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+   var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+   var pointLightSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+   pointLightSphere.position.copy(pointLight.position);
+ 
+   // Update the position of the point light when the transformControls is changed
+   transformControls.addEventListener("objectChange", function () {
+     pointLight.position.copy(pointLightSphere.position);
+   });
+ 
+   //AmbientLight
+   const ambientLight = new THREE.AmbientLight(0xffffff, 1); // default color and intensity
+   scene.add(ambientLight);
+ 
+   var gui = new GUI();
+ 
+   class ColorGUIHelper {
+     constructor(object, prop) {
+       this.object = object;
+       this.prop = prop;
+     }
+     get value() {
+       return `#${this.object[this.prop].getHexString()}`;
+     }
+     set value(hexString) {
+       this.object[this.prop].set(hexString);
+     }
+   }
+ 
+   // GUI for point light
+   var lightGUI = gui.addFolder("Light Control");
+   lightGUI.add(pointLight, "intensity", 0, 200, 1).name("Intensity");
+   lightGUI.add(pointLight, "distance", 0, 200, 1).name("Distance");
+   addColorGUI(pointLight, "Light Color", { color: 0xffffff }, lightGUI);
+   lightGUI.open();
+ 
+   // GUI for ambient light
+   var ambientLightGUI = gui.addFolder("Ambient Light");
+   ambientLightGUI
+     .addColor(new ColorGUIHelper(ambientLight, "color"), "value")
+     .name("Color");
+   ambientLightGUI.add(ambientLight, "intensity", 0, 100, 1).name("Intensity");
+   ambientLightGUI.open();
+ 
+   //GUI for HemisphereLight
+   var hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
+   var hemisphereLightGUI = gui.addFolder("Hemisphere Light");
+   scene.add(hemisphereLight);
+   hemisphereLightGUI
+     .addColor(new ColorGUIHelper(hemisphereLight, "color"), "value")
+     .name("skyColor");
+   hemisphereLightGUI
+     .addColor(new ColorGUIHelper(hemisphereLight, "groundColor"), "value")
+     .name("groundColor");
+   hemisphereLightGUI.add(hemisphereLight, "intensity", 0, 5, 0.01);
+ 
+   // Position GUI
+   gui.domElement.style.position = "absolute";
+   gui.domElement.style.top = "150px";
+   gui.domElement.style.right = "-10px";
 
-  // Cập nhật vị trí của pointLight khi pointLightSphere di chuyển
-  transformControls.addEventListener("objectChange", function () {
-    pointLight.position.copy(pointLightSphere.position);
-  });
 
-  var gui = new GUI();
-  gui.domElement.id = "GUI";
 
-  var planeColorGUI;
-  var colorGUI = gui.addFolder("Color");
-  addColorGUI(material, "Geometry Color", { color: 0xffffff }, colorGUI);
-  colorGUI.open();
+  
+
+
 
   camera.position.x = 1;
   camera.position.y = 2;
@@ -155,10 +204,12 @@ function init() {
   function animate() {
     requestAnimationFrame(animate);
 
-    angle += 0.01;
-    pointLight.position.x = radius * Math.cos(angle);
-    pointLight.position.z = radius * Math.sin(angle);
-    pointLightSphere.position.copy(pointLight.position);
+
+    // Animation move for point light
+    // angle += 0.01;
+    // pointLight.position.x = radius * Math.cos(angle);
+    // pointLight.position.z = radius * Math.sin(angle);
+    // pointLightSphere.position.copy(pointLight.position);
 
     if ( rotateAnimation || upDownAnimation || scaleAnimation || orbitAnimation ) {
       scene.children.forEach((mesh) => {
@@ -183,23 +234,6 @@ function init() {
         }
       });
 
-      // if (rotateAnimation) {
-      //   current_mesh.rotation.x += 0.01;
-      //   current_mesh.rotation.y += 0.01;
-      // }
-      // if (upDownAnimation) {
-      //   current_mesh.position.y = 10 * Math.abs(Math.sin(Date.now() * 0.001));
-      // }
-      // if (scaleAnimation) {
-      //   const scale = 1 + 0.5 * Math.sin(Date.now() * 0.001);
-      //   current_mesh.scale.set(scale, scale, scale);
-      // }
-      // if (orbitAnimation) {
-      //   const time = Date.now() * 0.001;
-      //   const orbitRadius = 5; // use a different variable to avoid shadowing `radius`
-      //   current_mesh.position.x = orbitRadius * Math.cos(time);
-      //   current_mesh.position.z = orbitRadius * Math.sin(time);
-      // }
     }  
     
 
@@ -258,15 +292,7 @@ function init() {
     }
   });
 
-  var lightGUI = gui.addFolder("Light Control");
-  lightGUI.add(pointLight, "intensity", 1, 20, 1).name("Intensity");
-  lightGUI.add(pointLight, "distance", 1, 200, 1).name("Distance");
-  addColorGUI(pointLight, "Light Color", { color: 0xffffff }, lightGUI);
-  lightGUI.open();
 
-  gui.domElement.style.position = "absolute";
-  gui.domElement.style.top = "150px";
-  gui.domElement.style.right = "-10px";
 
   
 
