@@ -177,8 +177,8 @@ function init() {
           if (orbitAnimation) {
             const time = Date.now() * 0.001;
             const orbitRadius = 5; // use a different variable to avoid shadowing `radius`
-            mesh.position.x = orbitRadius * Math.cos(time);
-            mesh.position.z = orbitRadius * Math.sin(time);
+            mesh.position.x += 0.01 * Math.cos(time);
+            mesh.position.z += 0.01 * Math.sin(time);
           }
         }
       });
