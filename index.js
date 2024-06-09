@@ -28,8 +28,14 @@ var hasLight = false;
 var transformActive = false; // Biến trạng thái để theo dõi trạng thái của TransformControls
 let currentObject = null;
 let objectTransformActive = false;
-let current_mesh = null;
+let mesh = null;
+// Light
+var pointLight = getPointLight(0xffffff, 100, 100);
 
+// Khởi tạo một đối tượng hình cầu đại diện cho PointLight
+var sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+var pointLightSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 function init() {
   controls.update();
   transformControls.size = 0.5;
@@ -52,13 +58,7 @@ function init() {
   gridHelper.position.y = 0;
   scene.add(gridHelper);
 
-  // Light
-  var pointLight = getPointLight(0xffffff, 100, 100);
 
-  // Khởi tạo một đối tượng hình cầu đại diện cho PointLight
-  var sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-  var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  var pointLightSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
   pointLightSphere.position.copy(pointLight.position);
 
   // Cập nhật vị trí của pointLight khi pointLightSphere di chuyển
@@ -82,16 +82,39 @@ function init() {
   const scaleBtn = document.getElementById("scaleMeshBtn");
   const rotateBtn = document.getElementById("rotateMeshBtn");
 
-  // Make interface
-  translateBtn.addEventListener('click', function (){
-    transformControls.mode = 'translate';
+  let translateActive = false;
+  const transformControlss = [];
+
+  translateBtn.addEventListener('click', function (e) {
+    if (translateActive === false) {
+      translateActive = true;
+      scene.children.forEach((mesh) => {
+        if (mesh instanceof THREE.Mesh && mesh !== pointLightSphere) {
+          const transformControl = new TransformControls(camera, renderer.domElement);
+          transformControl.mode = 'translate';
+          transformControl.attach(mesh);
+          scene.add(transformControl);
+          transformControlss.push(transformControl);
+          controls.enabled = false;
+        }
+      });
+    } else {
+
+      transformControlss.forEach((control) => {
+        scene.remove(control);
+      });
+      transformControlss.length = 0;
+      translateActive = false;
+      controls.enabled = true;
+    }
+    console.log(scene);
   });
 
-  scaleBtn.addEventListener('click', function(){
+  scaleBtn.addEventListener('click', function () {
     transformControls.mode = 'scale';
   });
 
-  rotateBtn.addEventListener('click', function(){
+  rotateBtn.addEventListener('click', function () {
     transformControls.mode = 'rotate';
   });
 
@@ -107,47 +130,47 @@ function init() {
     transformActive = !transformActive; // Đảo ngược trạng thái
   });
 
-  const raycaster = new THREE.Raycaster();
-  const mouse = new THREE.Vector2();
+  // const raycaster = new THREE.Raycaster();
+  // const mouse = new THREE.Vector2();
 
-  const onDocumentMouseDown = (event) => {
-    event.preventDefault();
+  // const onDocumentMouseDown = (event) => {
+  //   event.preventDefault();
 
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  //   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  //   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    raycaster.setFromCamera(mouse, camera);
+  //   raycaster.setFromCamera(mouse, camera);
 
-    const intersects = raycaster.intersectObjects(array_mesh);
-    if (intersects.length > 0) {
-      currentObject = intersects[0].object;
-      current_mesh = currentObject;
-      console.log('Selected mesh:', current_mesh);
-      if (objectTransformActive) {
-        transformControls.attach(currentObject);
-      }
-    }
-  };
+  //   const intersects = raycaster.intersectObjects(array_mesh);
+  //   if (intersects.length > 0) {
+  //     currentObject = intersects[0].object;
+  //     mesh = currentObject;
+  //     console.log('Selected mesh:', mesh);
+  //     if (objectTransformActive) {
+  //       transformControls.attach(currentObject);
+  //     }
+  //   }
+  // };
 
-  function onMouseClick(event) {
-    // Normalize mouse position to -1 to 1 range
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  // function onMouseClick(event) {
+  //   // Normalize mouse position to -1 to 1 range
+  //   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  //   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    raycaster.setFromCamera(mouse, camera);
+  //   raycaster.setFromCamera(mouse, camera);
 
-    let intersects = raycaster.intersectObjects(array_mesh);
+  //   let intersects = raycaster.intersectObjects(array_mesh);
 
-    if (intersects.length > 0) {
-      let selectedObject = intersects[0].object;
-      transformControls.attach(selectedObject);
-      scene.add(transformControls);
-    }
-  }
+  //   if (intersects.length > 0) {
+  //     let selectedObject = intersects[0].object;
+  //     transformControls.attach(selectedObject);
+  //     scene.add(transformControls);
+  //   }
+  // }
 
-  window.addEventListener("click", onMouseClick, false);
+  // window.addEventListener("click", onMouseClick, false);
 
-  document.addEventListener("mousedown", onDocumentMouseDown, false);
+  // document.addEventListener("mousedown", onDocumentMouseDown, false);
 
   let angle = 0;
   const radius = 5;
@@ -160,7 +183,7 @@ function init() {
     pointLight.position.z = radius * Math.sin(angle);
     pointLightSphere.position.copy(pointLight.position);
 
-    if ( rotateAnimation || upDownAnimation || scaleAnimation || orbitAnimation ) {
+    if (rotateAnimation || upDownAnimation || scaleAnimation || orbitAnimation) {
       scene.children.forEach((mesh) => {
         if (mesh instanceof THREE.Mesh && mesh !== pointLightSphere) {
           if (rotateAnimation) {
@@ -177,31 +200,31 @@ function init() {
           if (orbitAnimation) {
             const time = Date.now() * 0.001;
             const orbitRadius = 5; // use a different variable to avoid shadowing `radius`
-            mesh.position.x += 0.01 * Math.cos(time);
-            mesh.position.z += 0.01 * Math.sin(time);
+            mesh.position.x += 0.06 * Math.cos(time);
+            mesh.position.z += 0.06 * Math.sin(time);
           }
         }
       });
 
       // if (rotateAnimation) {
-      //   current_mesh.rotation.x += 0.01;
-      //   current_mesh.rotation.y += 0.01;
+      //   mesh.rotation.x += 0.01;
+      //   mesh.rotation.y += 0.01;
       // }
       // if (upDownAnimation) {
-      //   current_mesh.position.y = 10 * Math.abs(Math.sin(Date.now() * 0.001));
+      //   mesh.position.y = 10 * Math.abs(Math.sin(Date.now() * 0.001));
       // }
       // if (scaleAnimation) {
       //   const scale = 1 + 0.5 * Math.sin(Date.now() * 0.001);
-      //   current_mesh.scale.set(scale, scale, scale);
+      //   mesh.scale.set(scale, scale, scale);
       // }
       // if (orbitAnimation) {
       //   const time = Date.now() * 0.001;
       //   const orbitRadius = 5; // use a different variable to avoid shadowing `radius`
-      //   current_mesh.position.x = orbitRadius * Math.cos(time);
-      //   current_mesh.position.z = orbitRadius * Math.sin(time);
+      //   mesh.position.x = orbitRadius * Math.cos(time);
+      //   mesh.position.z = orbitRadius * Math.sin(time);
       // }
-    }  
-    
+    }
+
 
     controls.update();
     renderer.render(scene, camera);
@@ -268,45 +291,49 @@ function init() {
   gui.domElement.style.top = "150px";
   gui.domElement.style.right = "-10px";
 
-  
 
-} 
 
-// Surface handling
-function handleSurfaceClick(event){
-  var loader = new THREE.TextureLoader();
-  var surfaceType = event.target.textContent;
-  switch (surfaceType){
-    case "Wireframe":
-      current_mesh.material.wireframe = !current_mesh.material.wireframe;
-      current_mesh.material.needsUpdate = true;
-      break;
-    case "Rock":
-      current_mesh.material.map = loader.load('./img/rock.png');
-      current_mesh.material.needsUpdate = true;
-      console.log("loaded rock texture");
-      break;
-    case "Soil":
-      current_mesh.material.map = loader.load('./img/soil.png');
-      current_mesh.material.needsUpdate = true;
-      console.log("loaded soil texture");
-      break;
-    case "Water":
-      current_mesh.material.map = loader.load('./img/water.jpg');
-      current_mesh.material.needsUpdate = true;
-      console.log("loaded water texture");
-      break;
-    case "Wood":
-      current_mesh.material.map = loader.load('./img/wood.jpg');
-      current_mesh.material.needsUpdate = true;
-      console.log("loaded wood texture");
-      break;
-    default:
-      console.warn(`Surface type "${surfaceType}" not recognized.`);
-  }
 }
 
-function setupEventSurfaceListaner(){
+// Surface handling
+function handleSurfaceClick(event) {
+  var loader = new THREE.TextureLoader();
+  var surfaceType = event.target.textContent;
+  scene.children.forEach((mesh) => {
+    if (mesh instanceof THREE.Mesh && mesh !== pointLightSphere) {
+      switch (surfaceType) {
+        case "Wireframe":
+          mesh.material.wireframe = !mesh.material.wireframe;
+          mesh.material.needsUpdate = true;
+          break;
+        case "Rock":
+          mesh.material.map = loader.load('./img/rock.png');
+          mesh.material.needsUpdate = true;
+          console.log("loaded rock texture");
+          break;
+        case "Soil":
+          mesh.material.map = loader.load('./img/soil.png');
+          mesh.material.needsUpdate = true;
+          console.log("loaded soil texture");
+          break;
+        case "Water":
+          mesh.material.map = loader.load('./img/water.jpg');
+          mesh.material.needsUpdate = true;
+          console.log("loaded water texture");
+          break;
+        case "Wood":
+          mesh.material.map = loader.load('./img/wood.jpg');
+          mesh.material.needsUpdate = true;
+          console.log("loaded wood texture");
+          break;
+        default:
+          console.warn(`Surface type "${surfaceType}" not recognized.`);
+      }
+    }
+  })
+}
+
+function setupEventSurfaceListaner() {
   var surfaceOptions = document.querySelectorAll(".texture");
   surfaceOptions.forEach((option) => {
     option.addEventListener("click", handleSurfaceClick);
