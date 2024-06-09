@@ -72,4 +72,9 @@ header .option-bar .dropdown:hover .content {
     margin-right: 10px;
 }
 
+header .option-bar .dropdown .drop-content li {
+    margin: 0;
+    padding: 0;
+}
+
 /*# sourceMappingURL=/style.e308ff8e.css.map */
