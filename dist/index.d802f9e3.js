@@ -584,57 +584,95 @@ function hmrAccept(bundle /*: ParcelRequire */ , id /*: string */ ) {
 }
 
 },{}],"6QeBU":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 var _three = require("three");
 var _orbitControlsJs = require("three/examples/jsm/controls/OrbitControls.js");
 var _transformControlsJs = require("three/examples/jsm/controls/TransformControls.js");
+var _statsModule = require("three/examples/jsm/libs/stats.module");
+var _statsModuleDefault = parcelHelpers.interopDefault(_statsModule);
 var _datGui = require("dat.gui");
-var _mathUtilsJs = require("three/src/math/MathUtils.js");
 const scene = new _three.Scene();
 const camera = new _three.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new _three.WebGLRenderer();
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = _three.PCFSoftShadowMap; // Type of shadowMap.
 const controls = new (0, _orbitControlsJs.OrbitControls)(camera, renderer.domElement);
-const transforms = new (0, _transformControlsJs.TransformControls)(camera, renderer.domElement);
+const transformControls = new (0, _transformControlsJs.TransformControls)(camera, renderer.domElement);
 const array_mesh = [];
 let rotateAnimation = false;
 let upDownAnimation = false;
 let scaleAnimation = false;
 let orbitAnimation = false;
+var hasLight = false;
+var transformActive = false; // Biến trạng thái để theo dõi trạng thái của TransformControls
+let currentObject = null;
+let objectTransformActive = false;
+let current_mesh = null;
 function init() {
-    var animationRunning = false;
     controls.update();
-    transforms.size = 0.5;
-    transforms.addEventListener("change", ()=>renderer.render(scene, camera));
-    transforms.addEventListener("dragging-changed", function(event) {
+    transformControls.size = 0.5;
+    transformControls.addEventListener("change", ()=>renderer.render(scene, camera));
+    transformControls.addEventListener("dragging-changed", function(event) {
         controls.enabled = !event.value;
     });
-    transforms.mode = "translate";
-    scene.add(transforms);
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
-    const pointLight = new _three.PointLight(0xffffff, 100, 0);
-    pointLight.castShadow = true;
-    pointLight.position.set(10, 10, 10);
-    scene.add(pointLight);
+    var material = new _three.MeshBasicMaterial({
+        color: "#ffffff"
+    });
+    var backgroundAllPoints = getBackgroundAllPoints();
+    scene.add(backgroundAllPoints);
+    var gridHelper = new _three.GridHelper(50, 50, 0xff0000, "teal");
+    gridHelper.position.y = 0;
+    scene.add(gridHelper);
+    // Light
+    var pointLight = getPointLight(0xffffff, 100, 100);
+    // Khởi tạo một đối tượng hình cầu đại diện cho PointLight
+    var sphereGeometry = new _three.SphereGeometry(0.5, 32, 32);
+    var sphereMaterial = new _three.MeshBasicMaterial({
+        color: 0xffffff
+    });
+    var pointLightSphere = new _three.Mesh(sphereGeometry, sphereMaterial);
+    pointLightSphere.position.copy(pointLight.position);
+    // Cập nhật vị trí của pointLight khi pointLightSphere di chuyển
+    transformControls.addEventListener("objectChange", function() {
+        pointLight.position.copy(pointLightSphere.position);
+    });
+    var gui = new (0, _datGui.GUI)();
+    gui.domElement.id = "GUI";
+    var planeColorGUI;
+    var colorGUI = gui.addFolder("Color");
+    addColorGUI(material, "Geometry Color", {
+        color: 0xffffff
+    }, colorGUI);
+    colorGUI.open();
     camera.position.x = 1;
     camera.position.y = 2;
     camera.position.z = 5;
-    const translateBtn = document.getElementById("translateBtn");
-    // const scaleBtn = document.getElementById('scalseBtn');
-    // const rotateBtn = document.getElementById('rotateBtn');
-    // make interface
+    const translateBtn = document.getElementById("translateMeshBtn");
+    const scaleBtn = document.getElementById("scaleMeshBtn");
+    const rotateBtn = document.getElementById("rotateMeshBtn");
+    // Make interface
     translateBtn.addEventListener("click", function() {
-        transforms.mode = "translate";
-        setButtonActive(translateBtn);
+        transformControls.mode = "translate";
     });
-    // scaleBtn.addEventListener('click', function () {
-    //     transforms.mode = 'scale';
-    //     setButtonActive(scaleBtn);
-    // });
-    // rotateBtn.addEventListener('click', function () {
-    //     transforms.mode = 'rotate';
-    //     setButtonActive(rotateBtn);
-    // });
-    //-----------
+    scaleBtn.addEventListener("click", function() {
+        transformControls.mode = "scale";
+    });
+    rotateBtn.addEventListener("click", function() {
+        transformControls.mode = "rotate";
+    });
+    // Button event for Translate Light
+    document.getElementById("translateLightBtn").addEventListener("click", ()=>{
+        if (!transformActive) {
+            transformControls.attach(pointLightSphere);
+            scene.add(transformControls);
+        } else {
+            transformControls.detach();
+            scene.remove(transformControls);
+        }
+        transformActive = !transformActive; // Đảo ngược trạng thái
+    });
     const raycaster = new _three.Raycaster();
     const mouse = new _three.Vector2();
     const onDocumentMouseDown = (event)=>{
@@ -643,15 +681,27 @@ function init() {
         mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(array_mesh);
-        console.log(intersects);
         if (intersects.length > 0) {
-            const selectedObject = intersects[0].object;
-            transforms.attach(selectedObject);
-            console.log("selected");
+            currentObject = intersects[0].object;
+            current_mesh = currentObject;
+            console.log("Selected mesh:", current_mesh);
+            if (objectTransformActive) transformControls.attach(currentObject);
         }
     };
+    function onMouseClick(event) {
+        // Normalize mouse position to -1 to 1 range
+        mouse.x = event.clientX / window.innerWidth * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        let intersects = raycaster.intersectObjects(array_mesh);
+        if (intersects.length > 0) {
+            let selectedObject = intersects[0].object;
+            transformControls.attach(selectedObject);
+            scene.add(transformControls);
+        }
+    }
+    window.addEventListener("click", onMouseClick, false);
     document.addEventListener("mousedown", onDocumentMouseDown, false);
-    // ----------
     let angle = 0;
     const radius = 5;
     function animate() {
@@ -659,9 +709,9 @@ function init() {
         angle += 0.01;
         pointLight.position.x = radius * Math.cos(angle);
         pointLight.position.z = radius * Math.sin(angle);
-        pointLight.position.y = 2;
+        pointLightSphere.position.copy(pointLight.position);
         if (rotateAnimation || upDownAnimation || scaleAnimation || orbitAnimation) scene.children.forEach((mesh)=>{
-            if (mesh instanceof _three.Mesh) {
+            if (mesh instanceof _three.Mesh && mesh !== pointLightSphere) {
                 if (rotateAnimation) {
                     mesh.rotation.x += 0.01;
                     mesh.rotation.y += 0.01;
@@ -673,19 +723,15 @@ function init() {
                 }
                 if (orbitAnimation) {
                     const time = Date.now() * 0.001;
-                    const radius = 5; // bán kính quỹ đạo
-                    mesh.position.x = radius * Math.cos(time);
-                    mesh.position.z = radius * Math.sin(time);
+                    const orbitRadius = 5; // use a different variable to avoid shadowing `radius`
+                    mesh.position.x = orbitRadius * Math.cos(time);
+                    mesh.position.z = orbitRadius * Math.sin(time);
                 }
             }
         });
         controls.update();
         renderer.render(scene, camera);
     }
-    var backgroundAllPoints = getBackgroundAllPoints();
-    scene.add(backgroundAllPoints);
-    //------------------------
-    animate();
     document.getElementById("rotate").addEventListener("change", function() {
         rotateAnimation = this.checked;
     });
@@ -698,6 +744,80 @@ function init() {
     document.getElementById("orbit").addEventListener("change", function() {
         orbitAnimation = this.checked;
     });
+    animate();
+    // Light control
+    $(".light").click(function() {
+        if ($(this).text() == "Point Light" && hasLight === false) {
+            hasLight = true;
+            scene.add(pointLight);
+            scene.add(pointLightSphere);
+            transformControls.attach(pointLightSphere);
+            var plane = getPlane(150);
+            gridHelper.add(plane);
+            var pointLightHelper = getPointLightHelper(pointLight);
+            scene.add(pointLightHelper);
+            planeColorGUI = addColorGUI(plane.material, "Plane Color", {
+                color: 0x15151e
+            }, colorGUI);
+        } else {
+            hasLight = false;
+            scene.remove(pointLight);
+            scene.remove(pointLightSphere);
+            transformControls.detach(pointLightSphere);
+            scene.remove(scene.getObjectByName("PointLightHelper"));
+            gridHelper.remove(scene.getObjectByName("Plane"));
+            colorGUI.remove(planeColorGUI);
+        }
+    });
+    var lightGUI = gui.addFolder("Light Control");
+    lightGUI.add(pointLight, "intensity", 1, 20, 1).name("Intensity");
+    lightGUI.add(pointLight, "distance", 1, 200, 1).name("Distance");
+    addColorGUI(pointLight, "Light Color", {
+        color: 0xffffff
+    }, lightGUI);
+    lightGUI.open();
+    gui.domElement.style.position = "absolute";
+    gui.domElement.style.top = "150px";
+    gui.domElement.style.right = "-10px";
+}
+// Surface handling
+function handleSurfaceClick(event) {
+    var loader = new _three.TextureLoader();
+    var surfaceType = event.target.textContent;
+    switch(surfaceType){
+        case "Wireframe":
+            current_mesh.material.wireframe = !current_mesh.material.wireframe;
+            current_mesh.material.needsUpdate = true;
+            break;
+        case "Rock":
+            current_mesh.material.map = loader.load("./img/rock.png");
+            current_mesh.material.needsUpdate = true;
+            console.log("loaded rock texture");
+            break;
+        case "Soil":
+            current_mesh.material.map = loader.load("./img/soil.png");
+            current_mesh.material.needsUpdate = true;
+            console.log("loaded soil texture");
+            break;
+        case "Water":
+            current_mesh.material.map = loader.load("./img/water.jpg");
+            current_mesh.material.needsUpdate = true;
+            console.log("loaded water texture");
+            break;
+        case "Wood":
+            current_mesh.material.map = loader.load("./img/wood.jpg");
+            current_mesh.material.needsUpdate = true;
+            console.log("loaded wood texture");
+            break;
+        default:
+            console.warn(`Surface type "${surfaceType}" not recognized.`);
+    }
+}
+function setupEventSurfaceListaner() {
+    var surfaceOptions = document.querySelectorAll(".texture");
+    surfaceOptions.forEach((option)=>{
+        option.addEventListener("click", handleSurfaceClick);
+    });
 }
 function addGeometry(geometry) {
     const material = new _three.MeshBasicMaterial({
@@ -705,11 +825,13 @@ function addGeometry(geometry) {
         side: _three.DoubleSide
     });
     const mesh = new _three.Mesh(geometry, material);
+    mesh.position.y = 0.5;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     scene.add(mesh);
     array_mesh.push(mesh);
-    return mesh;
 }
-function setupEventListeners() {
+function setupEventGeometryListeners() {
     const geometryOptions = document.querySelectorAll(".geometry");
     geometryOptions.forEach((option)=>{
         option.addEventListener("click", handleGeometryClick);
@@ -717,6 +839,7 @@ function setupEventListeners() {
 }
 function handleGeometryClick(event) {
     const geometryType = event.target.textContent;
+    let geometry;
     switch(geometryType){
         case "Plane":
             addGeometry(new _three.PlaneGeometry(1, 1));
@@ -879,6 +1002,19 @@ function handleGeometryClick(event) {
         default:
             console.warn(`Geometry type "${geometryType}" not recognized.`);
     }
+    if (geometry) {
+        const material = new _three.MeshBasicMaterial({
+            color: Math.random() * 0xffffff,
+            side: _three.DoubleSide
+        });
+        const mesh = new _three.Mesh(geometry, material);
+        mesh.position.y = 0.5;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add(mesh);
+        array_mesh.push(mesh);
+        currentObject = mesh; // Set the current object to the newly created mesh
+    }
 }
 function getBackgroundAllPoints() {
     const vertices = [];
@@ -896,36 +1032,42 @@ function getBackgroundAllPoints() {
     const points = new _three.Points(geometry1, material1);
     return points;
 }
-function RotateObjectAnimation(object, scene, camera, renderer) {
-    function animate() {
-        object.forEach((mesh)=>{
-            if (mesh) {
-                step = 0;
-                mesh.rotation.x += 0.01;
-                mesh.rotation.y += 0.01;
-                if (document.getElementById("updown").checked == true) {
-                    step += 0.005;
-                    mesh.position.y = 10 * Math.abs(Math.sin(step));
-                }
-            }
-        });
-        renderer.render(scene, camera);
-    }
-    function startAnimation() {
-        renderer.setAnimationLoop(animate);
-    }
-    function stopAnimation() {
-        renderer.setAnimationLoop(null);
-    }
-    return {
-        start: startAnimation,
-        stop: stopAnimation
-    };
+function getPointLightHelper(pointLight) {
+    const sphereSize = 1;
+    const pointLightHelper = new _three.PointLightHelper(pointLight, sphereSize);
+    pointLightHelper.name = "PointLightHelper";
+    return pointLightHelper;
+}
+function getPlane(size) {
+    var geometry = new _three.PlaneGeometry(size, size);
+    var material = new _three.MeshStandardMaterial({
+        color: "#15151e",
+        side: _three.DoubleSide
+    });
+    var mesh = new _three.Mesh(geometry, material);
+    mesh.receiveShadow = true; // Receive shadow (Nhận đỗ bóng).
+    mesh.rotation.x = Math.PI / 2;
+    mesh.name = "Plane";
+    return mesh;
+}
+function getPointLight(color, intensity, distance) {
+    var pointLight = new _three.PointLight(color, intensity, distance);
+    pointLight.position.set(10, 10, 10);
+    pointLight.castShadow = true; // Đổ bóng
+    pointLight.name = "PointLight";
+    return pointLight;
+}
+function addColorGUI(obj, name, params, folder) {
+    var objColorGUI = folder.addColor(params, "color").name(name).onChange(function() {
+        obj.color.set(params.color);
+    });
+    return objColorGUI;
 }
 init();
-setupEventListeners();
+setupEventGeometryListeners();
+setupEventSurfaceListaner();
 
-},{"three":"ktPTu","three/examples/jsm/controls/OrbitControls.js":"7mqRv","three/examples/jsm/controls/TransformControls.js":"7wM6b","dat.gui":"k3xQk","three/src/math/MathUtils.js":"cuzU2"}],"ktPTu":[function(require,module,exports) {
+},{"three":"ktPTu","three/examples/jsm/controls/OrbitControls.js":"7mqRv","three/examples/jsm/controls/TransformControls.js":"7wM6b","dat.gui":"k3xQk","three/examples/jsm/libs/stats.module":"6xUSB","@parcel/transformer-js/src/esmodule-helpers.js":"4IDcH"}],"ktPTu":[function(require,module,exports) {
 /**
  * @license
  * Copyright 2010-2024 Three.js Authors
@@ -36583,487 +36725,101 @@ var index = {
 };
 exports.default = index;
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"4IDcH"}],"cuzU2":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"4IDcH"}],"6xUSB":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
-parcelHelpers.export(exports, "DEG2RAD", ()=>DEG2RAD);
-parcelHelpers.export(exports, "RAD2DEG", ()=>RAD2DEG);
-parcelHelpers.export(exports, "generateUUID", ()=>generateUUID);
-parcelHelpers.export(exports, "clamp", ()=>clamp);
-parcelHelpers.export(exports, "euclideanModulo", ()=>euclideanModulo);
-parcelHelpers.export(exports, "mapLinear", ()=>mapLinear);
-parcelHelpers.export(exports, "inverseLerp", ()=>inverseLerp);
-parcelHelpers.export(exports, "lerp", ()=>lerp);
-parcelHelpers.export(exports, "damp", ()=>damp);
-parcelHelpers.export(exports, "pingpong", ()=>pingpong);
-parcelHelpers.export(exports, "smoothstep", ()=>smoothstep);
-parcelHelpers.export(exports, "smootherstep", ()=>smootherstep);
-parcelHelpers.export(exports, "randInt", ()=>randInt);
-parcelHelpers.export(exports, "randFloat", ()=>randFloat);
-parcelHelpers.export(exports, "randFloatSpread", ()=>randFloatSpread);
-parcelHelpers.export(exports, "seededRandom", ()=>seededRandom);
-parcelHelpers.export(exports, "degToRad", ()=>degToRad);
-parcelHelpers.export(exports, "radToDeg", ()=>radToDeg);
-parcelHelpers.export(exports, "isPowerOfTwo", ()=>isPowerOfTwo);
-parcelHelpers.export(exports, "ceilPowerOfTwo", ()=>ceilPowerOfTwo);
-parcelHelpers.export(exports, "floorPowerOfTwo", ()=>floorPowerOfTwo);
-parcelHelpers.export(exports, "setQuaternionFromProperEuler", ()=>setQuaternionFromProperEuler);
-parcelHelpers.export(exports, "normalize", ()=>normalize);
-parcelHelpers.export(exports, "denormalize", ()=>denormalize);
-parcelHelpers.export(exports, "MathUtils", ()=>MathUtils);
-const _lut = [
-    "00",
-    "01",
-    "02",
-    "03",
-    "04",
-    "05",
-    "06",
-    "07",
-    "08",
-    "09",
-    "0a",
-    "0b",
-    "0c",
-    "0d",
-    "0e",
-    "0f",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18",
-    "19",
-    "1a",
-    "1b",
-    "1c",
-    "1d",
-    "1e",
-    "1f",
-    "20",
-    "21",
-    "22",
-    "23",
-    "24",
-    "25",
-    "26",
-    "27",
-    "28",
-    "29",
-    "2a",
-    "2b",
-    "2c",
-    "2d",
-    "2e",
-    "2f",
-    "30",
-    "31",
-    "32",
-    "33",
-    "34",
-    "35",
-    "36",
-    "37",
-    "38",
-    "39",
-    "3a",
-    "3b",
-    "3c",
-    "3d",
-    "3e",
-    "3f",
-    "40",
-    "41",
-    "42",
-    "43",
-    "44",
-    "45",
-    "46",
-    "47",
-    "48",
-    "49",
-    "4a",
-    "4b",
-    "4c",
-    "4d",
-    "4e",
-    "4f",
-    "50",
-    "51",
-    "52",
-    "53",
-    "54",
-    "55",
-    "56",
-    "57",
-    "58",
-    "59",
-    "5a",
-    "5b",
-    "5c",
-    "5d",
-    "5e",
-    "5f",
-    "60",
-    "61",
-    "62",
-    "63",
-    "64",
-    "65",
-    "66",
-    "67",
-    "68",
-    "69",
-    "6a",
-    "6b",
-    "6c",
-    "6d",
-    "6e",
-    "6f",
-    "70",
-    "71",
-    "72",
-    "73",
-    "74",
-    "75",
-    "76",
-    "77",
-    "78",
-    "79",
-    "7a",
-    "7b",
-    "7c",
-    "7d",
-    "7e",
-    "7f",
-    "80",
-    "81",
-    "82",
-    "83",
-    "84",
-    "85",
-    "86",
-    "87",
-    "88",
-    "89",
-    "8a",
-    "8b",
-    "8c",
-    "8d",
-    "8e",
-    "8f",
-    "90",
-    "91",
-    "92",
-    "93",
-    "94",
-    "95",
-    "96",
-    "97",
-    "98",
-    "99",
-    "9a",
-    "9b",
-    "9c",
-    "9d",
-    "9e",
-    "9f",
-    "a0",
-    "a1",
-    "a2",
-    "a3",
-    "a4",
-    "a5",
-    "a6",
-    "a7",
-    "a8",
-    "a9",
-    "aa",
-    "ab",
-    "ac",
-    "ad",
-    "ae",
-    "af",
-    "b0",
-    "b1",
-    "b2",
-    "b3",
-    "b4",
-    "b5",
-    "b6",
-    "b7",
-    "b8",
-    "b9",
-    "ba",
-    "bb",
-    "bc",
-    "bd",
-    "be",
-    "bf",
-    "c0",
-    "c1",
-    "c2",
-    "c3",
-    "c4",
-    "c5",
-    "c6",
-    "c7",
-    "c8",
-    "c9",
-    "ca",
-    "cb",
-    "cc",
-    "cd",
-    "ce",
-    "cf",
-    "d0",
-    "d1",
-    "d2",
-    "d3",
-    "d4",
-    "d5",
-    "d6",
-    "d7",
-    "d8",
-    "d9",
-    "da",
-    "db",
-    "dc",
-    "dd",
-    "de",
-    "df",
-    "e0",
-    "e1",
-    "e2",
-    "e3",
-    "e4",
-    "e5",
-    "e6",
-    "e7",
-    "e8",
-    "e9",
-    "ea",
-    "eb",
-    "ec",
-    "ed",
-    "ee",
-    "ef",
-    "f0",
-    "f1",
-    "f2",
-    "f3",
-    "f4",
-    "f5",
-    "f6",
-    "f7",
-    "f8",
-    "f9",
-    "fa",
-    "fb",
-    "fc",
-    "fd",
-    "fe",
-    "ff"
-];
-let _seed = 1234567;
-const DEG2RAD = Math.PI / 180;
-const RAD2DEG = 180 / Math.PI;
-// http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript/21963136#21963136
-function generateUUID() {
-    const d0 = Math.random() * 0xffffffff | 0;
-    const d1 = Math.random() * 0xffffffff | 0;
-    const d2 = Math.random() * 0xffffffff | 0;
-    const d3 = Math.random() * 0xffffffff | 0;
-    const uuid = _lut[d0 & 0xff] + _lut[d0 >> 8 & 0xff] + _lut[d0 >> 16 & 0xff] + _lut[d0 >> 24 & 0xff] + "-" + _lut[d1 & 0xff] + _lut[d1 >> 8 & 0xff] + "-" + _lut[d1 >> 16 & 0x0f | 0x40] + _lut[d1 >> 24 & 0xff] + "-" + _lut[d2 & 0x3f | 0x80] + _lut[d2 >> 8 & 0xff] + "-" + _lut[d2 >> 16 & 0xff] + _lut[d2 >> 24 & 0xff] + _lut[d3 & 0xff] + _lut[d3 >> 8 & 0xff] + _lut[d3 >> 16 & 0xff] + _lut[d3 >> 24 & 0xff];
-    // .toLowerCase() here flattens concatenated strings to save heap memory space.
-    return uuid.toLowerCase();
-}
-function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-}
-// compute euclidean modulo of m % n
-// https://en.wikipedia.org/wiki/Modulo_operation
-function euclideanModulo(n, m) {
-    return (n % m + m) % m;
-}
-// Linear mapping from range <a1, a2> to range <b1, b2>
-function mapLinear(x, a1, a2, b1, b2) {
-    return b1 + (x - a1) * (b2 - b1) / (a2 - a1);
-}
-// https://www.gamedev.net/tutorials/programming/general-and-gameplay-programming/inverse-lerp-a-super-useful-yet-often-overlooked-function-r5230/
-function inverseLerp(x, y, value) {
-    if (x !== y) return (value - x) / (y - x);
-    else return 0;
-}
-// https://en.wikipedia.org/wiki/Linear_interpolation
-function lerp(x, y, t) {
-    return (1 - t) * x + t * y;
-}
-// http://www.rorydriscoll.com/2016/03/07/frame-rate-independent-damping-using-lerp/
-function damp(x, y, lambda, dt) {
-    return lerp(x, y, 1 - Math.exp(-lambda * dt));
-}
-// https://www.desmos.com/calculator/vcsjnyz7x4
-function pingpong(x, length = 1) {
-    return length - Math.abs(euclideanModulo(x, length * 2) - length);
-}
-// http://en.wikipedia.org/wiki/Smoothstep
-function smoothstep(x, min, max) {
-    if (x <= min) return 0;
-    if (x >= max) return 1;
-    x = (x - min) / (max - min);
-    return x * x * (3 - 2 * x);
-}
-function smootherstep(x, min, max) {
-    if (x <= min) return 0;
-    if (x >= max) return 1;
-    x = (x - min) / (max - min);
-    return x * x * x * (x * (x * 6 - 15) + 10);
-}
-// Random integer from <low, high> interval
-function randInt(low, high) {
-    return low + Math.floor(Math.random() * (high - low + 1));
-}
-// Random float from <low, high> interval
-function randFloat(low, high) {
-    return low + Math.random() * (high - low);
-}
-// Random float from <-range/2, range/2> interval
-function randFloatSpread(range) {
-    return range * (0.5 - Math.random());
-}
-// Deterministic pseudo-random float in the interval [ 0, 1 ]
-function seededRandom(s) {
-    if (s !== undefined) _seed = s;
-    // Mulberry32 generator
-    let t = _seed += 0x6D2B79F5;
-    t = Math.imul(t ^ t >>> 15, t | 1);
-    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-}
-function degToRad(degrees) {
-    return degrees * DEG2RAD;
-}
-function radToDeg(radians) {
-    return radians * RAD2DEG;
-}
-function isPowerOfTwo(value) {
-    return (value & value - 1) === 0 && value !== 0;
-}
-function ceilPowerOfTwo(value) {
-    return Math.pow(2, Math.ceil(Math.log(value) / Math.LN2));
-}
-function floorPowerOfTwo(value) {
-    return Math.pow(2, Math.floor(Math.log(value) / Math.LN2));
-}
-function setQuaternionFromProperEuler(q, a, b, c, order) {
-    // Intrinsic Proper Euler Angles - see https://en.wikipedia.org/wiki/Euler_angles
-    // rotations are applied to the axes in the order specified by 'order'
-    // rotation by angle 'a' is applied first, then by angle 'b', then by angle 'c'
-    // angles are in radians
-    const cos = Math.cos;
-    const sin = Math.sin;
-    const c2 = cos(b / 2);
-    const s2 = sin(b / 2);
-    const c13 = cos((a + c) / 2);
-    const s13 = sin((a + c) / 2);
-    const c1_3 = cos((a - c) / 2);
-    const s1_3 = sin((a - c) / 2);
-    const c3_1 = cos((c - a) / 2);
-    const s3_1 = sin((c - a) / 2);
-    switch(order){
-        case "XYX":
-            q.set(c2 * s13, s2 * c1_3, s2 * s1_3, c2 * c13);
-            break;
-        case "YZY":
-            q.set(s2 * s1_3, c2 * s13, s2 * c1_3, c2 * c13);
-            break;
-        case "ZXZ":
-            q.set(s2 * c1_3, s2 * s1_3, c2 * s13, c2 * c13);
-            break;
-        case "XZX":
-            q.set(c2 * s13, s2 * s3_1, s2 * c3_1, c2 * c13);
-            break;
-        case "YXY":
-            q.set(s2 * c3_1, c2 * s13, s2 * s3_1, c2 * c13);
-            break;
-        case "ZYZ":
-            q.set(s2 * s3_1, s2 * c3_1, c2 * s13, c2 * c13);
-            break;
-        default:
-            console.warn("THREE.MathUtils: .setQuaternionFromProperEuler() encountered an unknown order: " + order);
+var Stats = function() {
+    var mode = 0;
+    var container = document.createElement("div");
+    container.style.cssText = "position:fixed;top:0;left:0;cursor:pointer;opacity:0.9;z-index:10000";
+    container.addEventListener("click", function(event) {
+        event.preventDefault();
+        showPanel(++mode % container.children.length);
+    }, false);
+    //
+    function addPanel(panel) {
+        container.appendChild(panel.dom);
+        return panel;
     }
-}
-function denormalize(value, array) {
-    switch(array.constructor){
-        case Float32Array:
-            return value;
-        case Uint32Array:
-            return value / 4294967295.0;
-        case Uint16Array:
-            return value / 65535.0;
-        case Uint8Array:
-            return value / 255.0;
-        case Int32Array:
-            return Math.max(value / 2147483647.0, -1);
-        case Int16Array:
-            return Math.max(value / 32767.0, -1);
-        case Int8Array:
-            return Math.max(value / 127.0, -1);
-        default:
-            throw new Error("Invalid component type.");
+    function showPanel(id) {
+        for(var i = 0; i < container.children.length; i++)container.children[i].style.display = i === id ? "block" : "none";
+        mode = id;
     }
-}
-function normalize(value, array) {
-    switch(array.constructor){
-        case Float32Array:
-            return value;
-        case Uint32Array:
-            return Math.round(value * 4294967295.0);
-        case Uint16Array:
-            return Math.round(value * 65535.0);
-        case Uint8Array:
-            return Math.round(value * 255.0);
-        case Int32Array:
-            return Math.round(value * 2147483647.0);
-        case Int16Array:
-            return Math.round(value * 32767.0);
-        case Int8Array:
-            return Math.round(value * 127.0);
-        default:
-            throw new Error("Invalid component type.");
-    }
-}
-const MathUtils = {
-    DEG2RAD: DEG2RAD,
-    RAD2DEG: RAD2DEG,
-    generateUUID: generateUUID,
-    clamp: clamp,
-    euclideanModulo: euclideanModulo,
-    mapLinear: mapLinear,
-    inverseLerp: inverseLerp,
-    lerp: lerp,
-    damp: damp,
-    pingpong: pingpong,
-    smoothstep: smoothstep,
-    smootherstep: smootherstep,
-    randInt: randInt,
-    randFloat: randFloat,
-    randFloatSpread: randFloatSpread,
-    seededRandom: seededRandom,
-    degToRad: degToRad,
-    radToDeg: radToDeg,
-    isPowerOfTwo: isPowerOfTwo,
-    ceilPowerOfTwo: ceilPowerOfTwo,
-    floorPowerOfTwo: floorPowerOfTwo,
-    setQuaternionFromProperEuler: setQuaternionFromProperEuler,
-    normalize: normalize,
-    denormalize: denormalize
+    //
+    var beginTime = (performance || Date).now(), prevTime = beginTime, frames = 0;
+    var fpsPanel = addPanel(new Stats.Panel("FPS", "#0ff", "#002"));
+    var msPanel = addPanel(new Stats.Panel("MS", "#0f0", "#020"));
+    if (self.performance && self.performance.memory) var memPanel = addPanel(new Stats.Panel("MB", "#f08", "#201"));
+    showPanel(0);
+    return {
+        REVISION: 16,
+        dom: container,
+        addPanel: addPanel,
+        showPanel: showPanel,
+        begin: function() {
+            beginTime = (performance || Date).now();
+        },
+        end: function() {
+            frames++;
+            var time = (performance || Date).now();
+            msPanel.update(time - beginTime, 200);
+            if (time >= prevTime + 1000) {
+                fpsPanel.update(frames * 1000 / (time - prevTime), 100);
+                prevTime = time;
+                frames = 0;
+                if (memPanel) {
+                    var memory = performance.memory;
+                    memPanel.update(memory.usedJSHeapSize / 1048576, memory.jsHeapSizeLimit / 1048576);
+                }
+            }
+            return time;
+        },
+        update: function() {
+            beginTime = this.end();
+        },
+        // Backwards Compatibility
+        domElement: container,
+        setMode: showPanel
+    };
 };
+Stats.Panel = function(name, fg, bg) {
+    var min = Infinity, max = 0, round = Math.round;
+    var PR = round(window.devicePixelRatio || 1);
+    var WIDTH = 80 * PR, HEIGHT = 48 * PR, TEXT_X = 3 * PR, TEXT_Y = 2 * PR, GRAPH_X = 3 * PR, GRAPH_Y = 15 * PR, GRAPH_WIDTH = 74 * PR, GRAPH_HEIGHT = 30 * PR;
+    var canvas = document.createElement("canvas");
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
+    canvas.style.cssText = "width:80px;height:48px";
+    var context = canvas.getContext("2d");
+    context.font = "bold " + 9 * PR + "px Helvetica,Arial,sans-serif";
+    context.textBaseline = "top";
+    context.fillStyle = bg;
+    context.fillRect(0, 0, WIDTH, HEIGHT);
+    context.fillStyle = fg;
+    context.fillText(name, TEXT_X, TEXT_Y);
+    context.fillRect(GRAPH_X, GRAPH_Y, GRAPH_WIDTH, GRAPH_HEIGHT);
+    context.fillStyle = bg;
+    context.globalAlpha = 0.9;
+    context.fillRect(GRAPH_X, GRAPH_Y, GRAPH_WIDTH, GRAPH_HEIGHT);
+    return {
+        dom: canvas,
+        update: function(value, maxValue) {
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+            context.fillStyle = bg;
+            context.globalAlpha = 1;
+            context.fillRect(0, 0, WIDTH, GRAPH_Y);
+            context.fillStyle = fg;
+            context.fillText(round(value) + " " + name + " (" + round(min) + "-" + round(max) + ")", TEXT_X, TEXT_Y);
+            context.drawImage(canvas, GRAPH_X + PR, GRAPH_Y, GRAPH_WIDTH - PR, GRAPH_HEIGHT, GRAPH_X, GRAPH_Y, GRAPH_WIDTH - PR, GRAPH_HEIGHT);
+            context.fillRect(GRAPH_X + GRAPH_WIDTH - PR, GRAPH_Y, PR, GRAPH_HEIGHT);
+            context.fillStyle = bg;
+            context.globalAlpha = 0.9;
+            context.fillRect(GRAPH_X + GRAPH_WIDTH - PR, GRAPH_Y, PR, round((1 - value / maxValue) * GRAPH_HEIGHT));
+        }
+    };
+};
+exports.default = Stats;
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"4IDcH"}]},["3tLz9","6QeBU"], "6QeBU", "parcelRequire94c2")
 
