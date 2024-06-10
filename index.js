@@ -73,8 +73,8 @@ function init() {
    });
  
    //AmbientLight
-   const ambientLight = new THREE.AmbientLight(0xffffff, 1); // default color and intensity
-   scene.add(ambientLight);
+  //  const ambientLight = new THREE.AmbientLight(0xffffff, 1); // default color and intensity
+  //  scene.add(ambientLight);
  
    var gui = new GUI();
  
@@ -99,34 +99,63 @@ function init() {
    lightGUI.open();
  
    // GUI for ambient light
-   var ambientLightGUI = gui.addFolder("Ambient Light");
-   ambientLightGUI
-     .addColor(new ColorGUIHelper(ambientLight, "color"), "value")
-     .name("Color");
-   ambientLightGUI.add(ambientLight, "intensity", 0, 100, 1).name("Intensity");
-   ambientLightGUI.open();
+  //  var ambientLightGUI = gui.addFolder("Ambient Light");
+  //  ambientLightGUI
+  //    .addColor(new ColorGUIHelper(ambientLight, "color"), "value")
+  //    .name("Color");
+  //  ambientLightGUI.add(ambientLight, "intensity", 0, 100, 1).name("Intensity");
+  //  ambientLightGUI.open();
+
+
+   //GUi for DirectionalLight
+    var directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(0, 10, 0);
+    directionalLight.castShadow = true;
+    scene.add(directionalLight);
+    var directionalLightGUI = gui.addFolder("Directional Light");
+    directionalLightGUI.add(directionalLight, "intensity", 0, 5, 0.01);
+    directionalLightGUI.add(directionalLight.position, "x", -10, 10, 0.01);
+    directionalLightGUI.add(directionalLight.position, "y", -10, 10, 0.01);
+    directionalLightGUI.add(directionalLight.position, "z", -10, 10, 0.01);
+    directionalLightGUI.open();
+
+
+    //GUI for SpotLight
+    var spotLight = new THREE.SpotLight(0xffffff, 1, 100, Math.PI / 4, 0.1, 1);
+    spotLight.position.set(0, 10, 0);
+    spotLight.castShadow = true;
+    scene.add(spotLight);
+    var spotLightGUI = gui.addFolder("Spot Light");
+    spotLightGUI.add(spotLight, "intensity", 0, 5, 0.01);
+    spotLightGUI.add(spotLight.position, "x", -10, 10, 0.01);
+    spotLightGUI.add(spotLight.position, "y", -10, 10, 0.01);
+    spotLightGUI.add(spotLight.position, "z", -10, 10, 0.01);
+    spotLightGUI.add(spotLight, "distance", 0, 200, 1);
+    spotLightGUI.add(spotLight, "angle", 0, Math.PI / 2, 0.01);
+    spotLightGUI.add(spotLight, "penumbra", 0, 1, 0.01);
+    spotLightGUI.add(spotLight, "decay", 1, 2, 0.01);
+    spotLightGUI.open();
+
+
+
+
  
    //GUI for HemisphereLight
-   var hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
-   var hemisphereLightGUI = gui.addFolder("Hemisphere Light");
-   scene.add(hemisphereLight);
-   hemisphereLightGUI
-     .addColor(new ColorGUIHelper(hemisphereLight, "color"), "value")
-     .name("skyColor");
-   hemisphereLightGUI
-     .addColor(new ColorGUIHelper(hemisphereLight, "groundColor"), "value")
-     .name("groundColor");
-   hemisphereLightGUI.add(hemisphereLight, "intensity", 0, 5, 0.01);
+  //  var hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
+  //  var hemisphereLightGUI = gui.addFolder("Hemisphere Light");
+  //  scene.add(hemisphereLight);
+  //  hemisphereLightGUI
+  //    .addColor(new ColorGUIHelper(hemisphereLight, "color"), "value")
+  //    .name("skyColor");
+  //  hemisphereLightGUI
+  //    .addColor(new ColorGUIHelper(hemisphereLight, "groundColor"), "value")
+  //    .name("groundColor");
+  //  hemisphereLightGUI.add(hemisphereLight, "intensity", 0, 5, 0.01);
  
    // Position GUI
    gui.domElement.style.position = "absolute";
    gui.domElement.style.top = "150px";
    gui.domElement.style.right = "-10px";
-
-
-
-  
-
 
 
   camera.position.x = 1;
