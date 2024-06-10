@@ -1,8 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
-import Stats from "three/examples/jsm/libs/stats.module";
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GUI } from "dat.gui";
+import { color } from "three/examples/jsm/nodes/Nodes.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -11,31 +12,29 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
+
 const renderer = new THREE.WebGLRenderer();
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Type of shadowMap.
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const controls = new OrbitControls(camera, renderer.domElement);
 const transformControls = new TransformControls(camera, renderer.domElement);
 const array_mesh = [];
+
 let rotateAnimation = false;
 let upDownAnimation = false;
 let scaleAnimation = false;
 let orbitAnimation = false;
 
-
-
 var hasLight = false;
-var transformActive = false; // Biến trạng thái để theo dõi trạng thái của TransformControls
+var transformActive = false;
 let currentObject = null;
 let objectTransformActive = false;
-let mesh = null;
-// Light
-var pointLight = getPointLight(0xffffff, 100, 100);
+let current_mesh = null;
+let choosedObject = null;
 
-// Khởi tạo một đối tượng hình cầu đại diện cho PointLight
-var sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-var pointLightSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+let angle = 0;
+let radius = 5;
+
 function init() {
   controls.update();
   transformControls.size = 0.5;
@@ -58,151 +57,72 @@ function init() {
   gridHelper.position.y = 0;
   scene.add(gridHelper);
 
-   // Light
-   var pointLight = getPointLight(0xffffff, 100, 100);
+  // Light
+  var pointLight = getPointLight(0xffffff, 100, 100);
 
-   // Create a sphere to help visualize the position of the point light
-   var sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
-   var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-   var pointLightSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-   pointLightSphere.position.copy(pointLight.position);
- 
-   // Update the position of the point light when the transformControls is changed
-   transformControls.addEventListener("objectChange", function () {
-     pointLight.position.copy(pointLightSphere.position);
-   });
- 
-   //AmbientLight
-  //  const ambientLight = new THREE.AmbientLight(0xffffff, 1); // default color and intensity
-  //  scene.add(ambientLight);
- 
-   var gui = new GUI();
- 
-   class ColorGUIHelper {
-     constructor(object, prop) {
-       this.object = object;
-       this.prop = prop;
-     }
-     get value() {
-       return `#${this.object[this.prop].getHexString()}`;
-     }
-     set value(hexString) {
-       this.object[this.prop].set(hexString);
-     }
-   }
- 
-   // GUI for point light
-   var lightGUI = gui.addFolder("Light Control");
-   lightGUI.add(pointLight, "intensity", 0, 200, 1).name("Intensity");
-   lightGUI.add(pointLight, "distance", 0, 200, 1).name("Distance");
-   addColorGUI(pointLight, "Light Color", { color: 0xffffff }, lightGUI);
-   lightGUI.open();
- 
-   // GUI for ambient light
-  //  var ambientLightGUI = gui.addFolder("Ambient Light");
-  //  ambientLightGUI
-  //    .addColor(new ColorGUIHelper(ambientLight, "color"), "value")
-  //    .name("Color");
-  //  ambientLightGUI.add(ambientLight, "intensity", 0, 100, 1).name("Intensity");
-  //  ambientLightGUI.open();
+  // Create a sphere to help visualize the position of the point light
+  var sphereGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+  var sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  var pointLightSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+  pointLightSphere.position.copy(pointLight.position);
 
-
-   //GUi for DirectionalLight
-    var directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(0, 10, 0);
-    directionalLight.castShadow = true;
-    scene.add(directionalLight);
-    var directionalLightGUI = gui.addFolder("Directional Light");
-    directionalLightGUI.add(directionalLight, "intensity", 0, 5, 0.01);
-    directionalLightGUI.add(directionalLight.position, "x", -10, 10, 0.01);
-    directionalLightGUI.add(directionalLight.position, "y", -10, 10, 0.01);
-    directionalLightGUI.add(directionalLight.position, "z", -10, 10, 0.01);
-    directionalLightGUI.open();
-
-
-    //GUI for SpotLight
-    var spotLight = new THREE.SpotLight(0xffffff, 1, 100, Math.PI / 4, 0.1, 1);
-    spotLight.position.set(0, 10, 0);
-    spotLight.castShadow = true;
-    scene.add(spotLight);
-    var spotLightGUI = gui.addFolder("Spot Light");
-    spotLightGUI.add(spotLight, "intensity", 0, 5, 0.01);
-    spotLightGUI.add(spotLight.position, "x", -10, 10, 0.01);
-    spotLightGUI.add(spotLight.position, "y", -10, 10, 0.01);
-    spotLightGUI.add(spotLight.position, "z", -10, 10, 0.01);
-    spotLightGUI.add(spotLight, "distance", 0, 200, 1);
-    spotLightGUI.add(spotLight, "angle", 0, Math.PI / 2, 0.01);
-    spotLightGUI.add(spotLight, "penumbra", 0, 1, 0.01);
-    spotLightGUI.add(spotLight, "decay", 1, 2, 0.01);
-    spotLightGUI.open();
-
-
-
-
- 
-   //GUI for HemisphereLight
-  //  var hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 1);
-  //  var hemisphereLightGUI = gui.addFolder("Hemisphere Light");
-  //  scene.add(hemisphereLight);
-  //  hemisphereLightGUI
-  //    .addColor(new ColorGUIHelper(hemisphereLight, "color"), "value")
-  //    .name("skyColor");
-  //  hemisphereLightGUI
-  //    .addColor(new ColorGUIHelper(hemisphereLight, "groundColor"), "value")
-  //    .name("groundColor");
-  //  hemisphereLightGUI.add(hemisphereLight, "intensity", 0, 5, 0.01);
- 
-   // Position GUI
-   gui.domElement.style.position = "absolute";
-   gui.domElement.style.top = "150px";
-   gui.domElement.style.right = "-10px";
-
+  // Update the position of the point light when the transformControls is changed
+  transformControls.addEventListener("objectChange", function () {
+    pointLight.position.copy(pointLightSphere.position);
+  });
 
   camera.position.x = 1;
   camera.position.y = 2;
   camera.position.z = 5;
 
-  const translateBtn = document.getElementById("translateMeshBtn");
-  const scaleBtn = document.getElementById("scaleMeshBtn");
-  const rotateBtn = document.getElementById("rotateMeshBtn");
+  const translateBtn = document.getElementById("translateBtn");
+  const scaleBtn = document.getElementById("scaleBtn");
+  const rotateBtn = document.getElementById("rotateBtn");
 
-  let translateActive = false;
-  const transformControlss = [];
-
-  translateBtn.addEventListener('click', function (e) {
-    if (translateActive === false) {
-      translateActive = true;
-      scene.children.forEach((mesh) => {
-        if (mesh instanceof THREE.Mesh && mesh !== pointLightSphere) {
-          const transformControl = new TransformControls(camera, renderer.domElement);
-          transformControl.mode = 'translate';
-          transformControl.attach(mesh);
-          scene.add(transformControl);
-          transformControlss.push(transformControl);
-          controls.enabled = false;
-        }
-      });
+  // Create function for buttons translate, scale, rotate
+  // translateBtn
+  translateBtn.addEventListener("click", function () {
+    if (!objectTransformActive) {
+      for (const object of array_mesh) {
+        transformControls.setMode("translate");
+        transformControls.attach(object);
+        scene.add(transformControls);
+      }
     } else {
-
-      transformControlss.forEach((control) => {
-        scene.remove(control);
-      });
-      transformControlss.length = 0;
-      translateActive = false;
-      controls.enabled = true;
+      scene.remove(transformControls);
     }
-    console.log(scene);
+    objectTransformActive = !objectTransformActive;
   });
 
-  scaleBtn.addEventListener('click', function () {
-    transformControls.mode = 'scale';
+  // scaleBtn
+  scaleBtn.addEventListener("click", function () {
+    if (!objectTransformActive) {
+      for (const object of array_mesh) {
+        transformControls.setMode("scale");
+        transformControls.attach(object);
+        scene.add(transformControls);
+      }
+    } else {
+      scene.remove(transformControls);
+    }
+    objectTransformActive = !objectTransformActive;
   });
 
-  rotateBtn.addEventListener('click', function () {
-    transformControls.mode = 'rotate';
+  // rotateBtn
+  rotateBtn.addEventListener("click", function () {
+    if (!objectTransformActive) {
+      for (const object of array_mesh) {
+        transformControls.setMode("rotate");
+        transformControls.attach(object);
+        scene.add(transformControls);
+      }
+    } else {
+      scene.remove(transformControls);
+    }
+    objectTransformActive = !objectTransformActive;
   });
 
-  // Button event for Translate Light
+  // Translate Light
   document.getElementById("translateLightBtn").addEventListener("click", () => {
     if (!transformActive) {
       transformControls.attach(pointLightSphere);
@@ -211,106 +131,123 @@ function init() {
       transformControls.detach();
       scene.remove(transformControls);
     }
-    transformActive = !transformActive; // Đảo ngược trạng thái
+    transformActive = !transformActive;
   });
 
-  // const raycaster = new THREE.Raycaster();
-  // const mouse = new THREE.Vector2();
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
 
-  // const onDocumentMouseDown = (event) => {
-  //   event.preventDefault();
+  // Function to handle when clicking object
+  const onDocumentMouseDown = (event) => {
+    event.preventDefault();
 
-  //   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  //   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-  //   raycaster.setFromCamera(mouse, camera);
+    raycaster.setFromCamera(mouse, camera);
 
-  //   const intersects = raycaster.intersectObjects(array_mesh);
-  //   if (intersects.length > 0) {
-  //     currentObject = intersects[0].object;
-  //     mesh = currentObject;
-  //     console.log('Selected mesh:', mesh);
-  //     if (objectTransformActive) {
-  //       transformControls.attach(currentObject);
-  //     }
-  //   }
-  // };
+    const intersects = raycaster.intersectObjects(array_mesh);
+    if (intersects.length > 0) {
+      choosedObject = intersects[0].object;
+      current_mesh = choosedObject;
+      if (objectTransformActive) {
+        transformControls.attach(choosedObject);
+      }
+    }
+  };
 
-  // function onMouseClick(event) {
-  //   // Normalize mouse position to -1 to 1 range
-  //   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  //   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  function onMouseClick(event) {
+    // Get canvas from renderer
+    const canvas = renderer.domElement;
 
-  //   raycaster.setFromCamera(mouse, camera);
+    // Normalize
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
-  //   let intersects = raycaster.intersectObjects(array_mesh);
+    raycaster.setFromCamera(mouse, camera);
 
-  //   if (intersects.length > 0) {
-  //     let selectedObject = intersects[0].object;
-  //     transformControls.attach(selectedObject);
-  //     scene.add(transformControls);
-  //   }
-  // }
+    let intersects = raycaster.intersectObjects(array_mesh);
 
-  // window.addEventListener("click", onMouseClick, false);
+    if (intersects.length > 0) {
+      let selectedObject = intersects[0].object;
+      while (selectedObject.parent && !(selectedObject.parent instanceof THREE.Scene)) {
+        selectedObject = selectedObject.parent;
+      }
+      choosedObject = selectedObject;
+      transformControls.attach(selectedObject);
+      scene.add(transformControls);
+    }
+  }
 
-  // document.addEventListener("mousedown", onDocumentMouseDown, false);
+  window.addEventListener("click", onMouseClick, false);
+  document.addEventListener("mousedown", onDocumentMouseDown, false);
 
-  let angle = 0;
-  const radius = 5;
+
+  // Handle even when clicking geometry, surface, light, animation
+  // Geometry
+  const geometryOptions = document.querySelectorAll(".option_geometry");
+  geometryOptions.forEach((option) => {
+    option.addEventListener("click", handleGeometryClick);
+  });
+
+  // Surface
+  const surfaceOptions = document.querySelectorAll(".texture");
+  surfaceOptions.forEach((option) => {
+    option.addEventListener("click", handleSurfaceClick);
+  });
+
+  // Light
+  $(".light").click(function () {
+    if ($(this).text() == "Point Light" && hasLight === false) {
+      hasLight = true;
+      scene.add(pointLight);
+      scene.add(pointLightSphere);
+      transformControls.attach(pointLightSphere);
+
+      var plane = getPlane(150);
+      gridHelper.add(plane);
+
+      var pointLightHelper = getPointLightHelper(pointLight);
+      scene.add(pointLightHelper);
+    } else {
+      hasLight = false;
+
+      scene.remove(pointLight);
+      scene.remove(pointLightSphere);
+      transformControls.detach(pointLightSphere);
+      scene.remove(scene.getObjectByName("PointLightHelper"));
+      gridHelper.remove(scene.getObjectByName("Plane"));
+    }
+  });
 
   function animate() {
     requestAnimationFrame(animate);
 
-
-    // Animation move for point light
-    // angle += 0.01;
-    // pointLight.position.x = radius * Math.cos(angle);
-    // pointLight.position.z = radius * Math.sin(angle);
-    // pointLightSphere.position.copy(pointLight.position);
-
     if (rotateAnimation || upDownAnimation || scaleAnimation || orbitAnimation) {
-      scene.children.forEach((mesh) => {
-        if (mesh instanceof THREE.Mesh && mesh !== pointLightSphere) {
-          if (rotateAnimation) {
-            mesh.rotation.x += 0.01;
-            mesh.rotation.y += 0.01;
-          }
-          if (upDownAnimation) {
-            mesh.position.y = 10 * Math.abs(Math.sin(Date.now() * 0.001));
-          }
-          if (scaleAnimation) {
-            const scale = 1 + 0.5 * Math.sin(Date.now() * 0.001);
-            mesh.scale.set(scale, scale, scale);
-          }
-          if (orbitAnimation) {
-            const time = Date.now() * 0.001;
-            const orbitRadius = 5; // use a different variable to avoid shadowing `radius`
-            mesh.position.x += 0.06 * Math.cos(time);
-            mesh.position.z += 0.06 * Math.sin(time);
-          }
+      if (choosedObject instanceof THREE.Mesh || choosedObject instanceof THREE.Group) {
+        if (rotateAnimation) {
+          choosedObject.rotation.x += 0.01;
+          choosedObject.rotation.y += 0.01;
         }
-      });
-
-      // if (rotateAnimation) {
-      //   mesh.rotation.x += 0.01;
-      //   mesh.rotation.y += 0.01;
-      // }
-      // if (upDownAnimation) {
-      //   mesh.position.y = 10 * Math.abs(Math.sin(Date.now() * 0.001));
-      // }
-      // if (scaleAnimation) {
-      //   const scale = 1 + 0.5 * Math.sin(Date.now() * 0.001);
-      //   mesh.scale.set(scale, scale, scale);
-      // }
-      // if (orbitAnimation) {
-      //   const time = Date.now() * 0.001;
-      //   const orbitRadius = 5; // use a different variable to avoid shadowing `radius`
-      //   mesh.position.x = orbitRadius * Math.cos(time);
-      //   mesh.position.z = orbitRadius * Math.sin(time);
-      // }
+        if (upDownAnimation) {
+          choosedObject.position.y = 5 * Math.abs(Math.sin(Date.now() * 0.001));
+        }
+        if (scaleAnimation) {
+          const scale = 1 + 0.5 * Math.sin(Date.now() * 0.001);
+          choosedObject.scale.set(scale, scale, scale);
+        }
+        if (orbitAnimation) {
+          if (!choosedObject.orbitCenter) {
+            choosedObject.orbitCenter = choosedObject.position.clone();
+          }
+          const time = Date.now() * 0.001;
+          const orbitRadius = 3;
+          choosedObject.position.x = choosedObject.orbitCenter.x + orbitRadius * Math.cos(time);
+          choosedObject.position.z = choosedObject.orbitCenter.z + orbitRadius * Math.sin(time);
+        }
+      }
     }
-
 
     controls.update();
     renderer.render(scene, camera);
@@ -334,90 +271,85 @@ function init() {
 
   animate();
 
-  // Light control
-  $(".light").click(function () {
-    if ($(this).text() == "Point Light" && hasLight === false) {
-      hasLight = true;
-      scene.add(pointLight);
-      scene.add(pointLightSphere);
-      transformControls.attach(pointLightSphere);
 
-      var plane = getPlane(150);
-      gridHelper.add(plane);
+  // GUI
+  var gui = new GUI({ autoPlace: false });
+  document.getElementById('gui-container').appendChild(gui.domElement);
 
-      var pointLightHelper = getPointLightHelper(pointLight);
-      scene.add(pointLightHelper);
-
-      planeColorGUI = addColorGUI(
-        plane.material,
-        "Plane Color",
-        { color: 0x15151e },
-        colorGUI
-      );
-    } else {
-      hasLight = false;
-
-      scene.remove(pointLight);
-      scene.remove(pointLightSphere);
-      transformControls.detach(pointLightSphere);
-      scene.remove(scene.getObjectByName("PointLightHelper"));
-      gridHelper.remove(scene.getObjectByName("Plane"));
-
-      colorGUI.remove(planeColorGUI);
+  class ColorGUIHelper {
+    constructor(object, prop) {
+      this.object = object;
+      this.prop = prop;
     }
-  });
-
-
-
-
-
-}
-
-// Surface handling
-function handleSurfaceClick(event) {
-  var loader = new THREE.TextureLoader();
-  var surfaceType = event.target.textContent;
-  scene.children.forEach((mesh) => {
-    if (mesh instanceof THREE.Mesh && mesh !== pointLightSphere) {
-      switch (surfaceType) {
-        case "Wireframe":
-          mesh.material.wireframe = !mesh.material.wireframe;
-          mesh.material.needsUpdate = true;
-          break;
-        case "Rock":
-          mesh.material.map = loader.load('./img/rock.png');
-          mesh.material.needsUpdate = true;
-          console.log("loaded rock texture");
-          break;
-        case "Soil":
-          mesh.material.map = loader.load('./img/soil.png');
-          mesh.material.needsUpdate = true;
-          console.log("loaded soil texture");
-          break;
-        case "Water":
-          mesh.material.map = loader.load('./img/water.jpg');
-          mesh.material.needsUpdate = true;
-          console.log("loaded water texture");
-          break;
-        case "Wood":
-          mesh.material.map = loader.load('./img/wood.jpg');
-          mesh.material.needsUpdate = true;
-          console.log("loaded wood texture");
-          break;
-        default:
-          console.warn(`Surface type "${surfaceType}" not recognized.`);
-      }
+    get value() {
+      return `#${this.object[this.prop].getHexString()}`;
     }
-  })
-}
+    set value(hexString) {
+      this.object[this.prop].set(hexString);
+    }
+  }
 
-function setupEventSurfaceListaner() {
-  var surfaceOptions = document.querySelectorAll(".texture");
-  surfaceOptions.forEach((option) => {
-    option.addEventListener("click", handleSurfaceClick);
+  // Geometry color
+  var colorGUI = gui.addFolder("Geometry Color");
+  addColorGUI(material, "Color", { color: 0xffffff }, colorGUI).onChange(function (colorValue) {
+    updateGeometryColor(choosedObject, colorValue);
   });
+  console.log(material.color);
+  colorGUI.open();
+
+  // Camera
+  const cameraGUI = gui.addFolder("Camera");
+  cameraGUI.add(camera, "fov", 1, 180).name("FOV").onChange(updateCamera);
+  cameraGUI.add(camera, "near", 0.1, 50).name("Near").onChange(updateCamera);
+  cameraGUI.add(camera, "far", 50, 2000).name("Far").onChange(updateCamera);
+  cameraGUI.open();
+
+  // Point Light
+  var lightGUI = gui.addFolder("Point Light");
+  lightGUI.add(pointLight, "intensity", 0, 200, 1).name("Intensity");
+  lightGUI.add(pointLight, "distance", 0, 200, 1).name("Distance");
+  addColorGUI(pointLight, "Light Color", { color: 0xffffff }, lightGUI);
+  lightGUI.open();
+
+  // Directional Light
+  var directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+  directionalLight.position.set(0, 10, 0);
+  directionalLight.castShadow = true;
+  scene.add(directionalLight);
+  var directionalLightGUI = gui.addFolder("Directional Light");
+  directionalLightGUI.add(directionalLight, "intensity", 0, 5, 0.01);
+  directionalLightGUI.add(directionalLight.position, "x", -10, 10, 0.01);
+  directionalLightGUI.add(directionalLight.position, "y", -10, 10, 0.01);
+  directionalLightGUI.add(directionalLight.position, "z", -10, 10, 0.01);
+  directionalLightGUI.open();
+
+  //SpotLight
+  var spotLight = new THREE.SpotLight(0xffffff, 1, 100, Math.PI / 4, 0.1, 1);
+  spotLight.position.set(0, 10, 0);
+  spotLight.castShadow = true;
+  scene.add(spotLight);
+  var spotLightGUI = gui.addFolder("Spot Light");
+  spotLightGUI.add(spotLight, "intensity", 0, 200, 0.01);
+  spotLightGUI.add(spotLight.position, "x", -10, 10, 0.01);
+  spotLightGUI.add(spotLight.position, "y", -10, 10, 0.01);
+  spotLightGUI.add(spotLight.position, "z", -10, 10, 0.01);
+  spotLightGUI.add(spotLight, "distance", 0, 100, 1);
+  spotLightGUI.add(spotLight, "angle", 0, Math.PI / 2, 0.01);
+  spotLightGUI.add(spotLight, "penumbra", 0, 1, 0.01);
+  spotLightGUI.add(spotLight, "decay", 1, 2, 0.01);
+  spotLightGUI.open();
+
+  // Set position
+  const guiContainer = document.getElementById('gui-container');
+  gui.domElement.style.position = "relative";
+  gui.domElement.style.width = "100%";
+  gui.domElement.style.height = "100%";
 }
 
+init();
+
+
+// Other functions
 function addGeometry(geometry) {
   const material = new THREE.MeshBasicMaterial({
     color: Math.random() * 0xffffff,
@@ -431,11 +363,78 @@ function addGeometry(geometry) {
   array_mesh.push(mesh);
 }
 
-function setupEventGeometryListeners() {
-  const geometryOptions = document.querySelectorAll(".geometry");
-  geometryOptions.forEach((option) => {
-    option.addEventListener("click", handleGeometryClick);
+function addColorGUI(obj, name, params, folder) {
+  var objColorGUI = folder
+    .addColor(params, "color")
+    .name(name)
+    .onChange(function () {
+      obj.color.set(params.color);
+    });
+
+  return objColorGUI;
+}
+
+function getBackgroundAllPoints() {
+  const vertices = [];
+
+  for (let i = 0; i < 30000; i++) {
+    const x = THREE.MathUtils.randFloatSpread(2000);
+    const y = THREE.MathUtils.randFloatSpread(2000);
+    const z = THREE.MathUtils.randFloatSpread(2000);
+
+    vertices.push(x, y, z);
+  }
+
+  const geometry1 = new THREE.BufferGeometry();
+  geometry1.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(vertices, 3)
+  );
+
+  const material1 = new THREE.PointsMaterial({ color: 0x888888 });
+
+  const points = new THREE.Points(geometry1, material1);
+
+  return points;
+}
+
+function getPointLightHelper(pointLight) {
+  const sphereSize = 1;
+  const pointLightHelper = new THREE.PointLightHelper(pointLight, sphereSize);
+  pointLightHelper.name = "PointLightHelper";
+
+  return pointLightHelper;
+}
+
+function getPlane(size) {
+  var geometry = new THREE.PlaneGeometry(size, size);
+  var material = new THREE.MeshStandardMaterial({
+    color: "#15151e",
+    side: THREE.DoubleSide,
   });
+  var mesh = new THREE.Mesh(geometry, material);
+  mesh.receiveShadow = true;
+  mesh.rotation.x = Math.PI / 2;
+  mesh.name = "Plane";
+
+  return mesh;
+}
+
+function getPointLight(color, intensity, distance) {
+  var pointLight = new THREE.PointLight(color, intensity, distance);
+  pointLight.position.set(0, 5, 0);
+  pointLight.castShadow = true;
+  pointLight.name = "PointLight";
+
+  return pointLight;
+}
+
+function updateCamera() {
+  camera.updateProjectionMatrix();
+}
+
+function updateGeometryColor(geometry, color) {
+  geometry.material.color.set(color);
 }
 
 function handleGeometryClick(event) {
@@ -552,8 +551,29 @@ function handleGeometryClick(event) {
       ]);
       addGeometry(new THREE.TubeGeometry(path, 20, 0.2, 8, true));
       break;
-    case "Import":
-      alert("Import functionality not implemented yet.");
+    case "Shiba":
+      let loadedModel;
+      const gltfLoader = new GLTFLoader();
+      gltfLoader.load('./model/shiba/scene.gltf', (gltfScene) => {
+        const group = new THREE.Group();
+        gltfScene.scene.children.forEach((child) => {
+          child.traverse((node) => {
+            if (node.isMesh) {
+              node.castShadow = true;
+              node.receiveShadow = true;
+            }
+          });
+          group.add(child);
+        });
+
+        group.rotation.y = Math.PI / 8;
+        group.position.y = 1;
+        group.scale.set(1, 1, 1);
+
+        scene.add(group);
+
+        array_mesh.push(group);
+      });
       break;
     default:
       console.warn(`Geometry type "${geometryType}" not recognized.`);
@@ -571,76 +591,39 @@ function handleGeometryClick(event) {
     scene.add(mesh);
     array_mesh.push(mesh);
 
-    currentObject = mesh; // Set the current object to the newly created mesh
+    currentObject = mesh;
   }
 }
 
-function getBackgroundAllPoints() {
-  const vertices = [];
-
-  for (let i = 0; i < 30000; i++) {
-    const x = THREE.MathUtils.randFloatSpread(2000);
-    const y = THREE.MathUtils.randFloatSpread(2000);
-    const z = THREE.MathUtils.randFloatSpread(2000);
-
-    vertices.push(x, y, z);
+function handleSurfaceClick(event) {
+  var loader = new THREE.TextureLoader();
+  var surfaceType = event.target.textContent;
+  switch (surfaceType) {
+    case "Wireframe":
+      choosedObject.material.wireframe = !choosedObject.material.wireframe;
+      choosedObject.material.needsUpdate = true;
+      break;
+    case "Rock":
+      choosedObject.material.map = loader.load('./img/rock.png');
+      choosedObject.material.needsUpdate = true;
+      console.log("loaded soil texture");
+      break;
+    case "Soil":
+      choosedObject.material.map = loader.load('./img/soil.png');
+      choosedObject.material.needsUpdate = true;
+      console.log("loaded soil texture");
+      break;
+    case "Water":
+      choosedObject.material.map = loader.load('./img/water.jpg');
+      choosedObject.material.needsUpdate = true;
+      console.log("loaded water texture");
+      break;
+    case "Wood":
+      choosedObject.material.map = loader.load('./img/wood.jpg');
+      choosedObject.material.needsUpdate = true;
+      console.log("loaded wood texture");
+      break;
+    default:
+      console.warn(`Surface type "${surfaceType}" not recognized.`);
   }
-
-  const geometry1 = new THREE.BufferGeometry();
-  geometry1.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(vertices, 3)
-  );
-
-  const material1 = new THREE.PointsMaterial({ color: 0x888888 });
-
-  const points = new THREE.Points(geometry1, material1);
-
-  return points;
 }
-
-function getPointLightHelper(pointLight) {
-  const sphereSize = 1;
-  const pointLightHelper = new THREE.PointLightHelper(pointLight, sphereSize);
-  pointLightHelper.name = "PointLightHelper";
-
-  return pointLightHelper;
-}
-
-function getPlane(size) {
-  var geometry = new THREE.PlaneGeometry(size, size);
-  var material = new THREE.MeshStandardMaterial({
-    color: "#15151e",
-    side: THREE.DoubleSide,
-  });
-  var mesh = new THREE.Mesh(geometry, material);
-  mesh.receiveShadow = true; // Receive shadow (Nhận đỗ bóng).
-  mesh.rotation.x = Math.PI / 2;
-  mesh.name = "Plane";
-
-  return mesh;
-}
-
-function getPointLight(color, intensity, distance) {
-  var pointLight = new THREE.PointLight(color, intensity, distance);
-  pointLight.position.set(10, 10, 10);
-  pointLight.castShadow = true; // Đổ bóng
-  pointLight.name = "PointLight";
-
-  return pointLight;
-}
-
-function addColorGUI(obj, name, params, folder) {
-  var objColorGUI = folder
-    .addColor(params, "color")
-    .name(name)
-    .onChange(function () {
-      obj.color.set(params.color);
-    });
-
-  return objColorGUI;
-}
-
-init();
-setupEventGeometryListeners();
-setupEventSurfaceListaner();

@@ -2,10 +2,10 @@
 <html>
 
     <head>
+        <meta charset="UTF-8">
         <title> Three.js </title>
         <style>
     </style>
-        <meta charset="UTF-8">
         <link rel="stylesheet" href="./style.css">
         <link rel="stylesheet"
             href="https://cdn.jsdelivr.net/npm/boxicons@latest/css/boxicons.min.css">
@@ -18,46 +18,49 @@
             <div class="project-name">
                 <p>ĐỒ HỌA MÁY TÍNH - MÔ PHỎNG VẬT THỂ 3D</p>
             </div>
+
+            <div id="gui-container"></div>
+            
             <div class="option-bar">
                 <div class="dropdown">
                     <div class="content">
                         <p>Geometry <i class='bx bxs-down-arrow'></i></p>
                     </div>
                     <ul class="drop-content">
-                        <li class="option geometry">Plane</li>
-                        <li class="option geometry">Box</li>
-                        <li class="option geometry">Circle</li>
-                        <li class="option geometry">Cone</li>
-                        <li class="option geometry">Cylinder</li>
-                        <li class="option geometry">Dodecahedron</li>
-                        <li class="option geometry">Edges</li>
-                        <li class="option geometry">Extrude</li>
-                        <li class="option geometry">Icosahedron</li>
-                        <li class="option geometry">Lathe</li>
-                        <li class="option geometry">Octahedron</li>
-                        <li class="option geometry">Parametric</li>
-                        <li class="option geometry">Polyhedron</li>
-                        <li class="option geometry">Ring</li>
-                        <li class="option geometry">Shape</li>
-                        <li class="option geometry">Sphere</li>
-                        <li class="option geometry">Tetrahedron</li>
-                        <li class="option geometry">Torus</li>
-                        <li class="option geometry">Tube</li>
-                        <li class="option geometry">Import <i
+                        <li class="option_geometry">Plane</li>
+                        <li class="option_geometry">Box</li>
+                        <li class="option_geometry">Circle</li>
+                        <li class="option_geometry">Cone</li>
+                        <li class="option_geometry">Cylinder</li>
+                        <li class="option_geometry">Dodecahedron</li>
+                        <li class="option_geometry">Edges</li>
+                        <li class="option_geometry">Extrude</li>
+                        <li class="option_geometry">Icosahedron</li>
+                        <li class="option_geometry">Lathe</li>
+                        <li class="option_geometry">Octahedron</li>
+                        <li class="option_geometry">Parametric</li>
+                        <li class="option_geometry">Polyhedron</li>
+                        <li class="option_geometry">Ring</li>
+                        <li class="option_geometry">Shape</li>
+                        <li class="option_geometry">Sphere</li>
+                        <li class="option_geometry">Tetrahedron</li>
+                        <li class="option_geometry">Torus</li>
+                        <li class="option_geometry">Tube</li>
+                        <li class="option_geometry">Shiba<i
                                 class='bx bx-plus-medical'></i></li>
                     </ul>
                 </div>
                 <div class="dropdown">
                     <div class="content">
                         <p>Surface <i class='bx bxs-down-arrow'></i></p>
+                        <ul class="drop-content">
+                            <li class="texture">Wireframe</li>
+                            <li class="texture">Rock</li>
+                            <li class="texture">Soil</li>
+                            <li class="texture">Water</li>
+                            <li class="texture">Wood</li>
+                        </ul>
                     </div>
-                    <ul class="drop-content">
-                        <li class="texture">Wireframe</li>
-                        <li class="texture">Rock</li>
-                        <li class="texture">Soil</li>
-                        <li class="texture">Water</li>
-                        <li class="texture">Wood</li>
-                    </ul>
 
                 </div>
                 <div class="dropdown">
@@ -90,10 +93,10 @@
         </header>
 
         <div id="container"></div>
-        <div class="transform" id="taransform">
-            <button id="translateMeshBtn">Translate</button>
-            <button id="scaleMeshBtn">Scale</button>
-            <button id="rotateMeshBtn">Rotate</button>
+        <div class="transform" id="transform">
+            <button id="translateBtn">Translate</button>
+            <button id="scaleBtn">Scale</button>
+            <button id="rotateBtn">Rotate</button>
             <button id="translateLightBtn">Translate Light</button>
         </div>
 

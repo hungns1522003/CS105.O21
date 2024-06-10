@@ -3,6 +3,11 @@
     --color: #ffffff;
 }
 
+body{
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
 
 header{
     padding-left: 10px;
@@ -10,66 +15,120 @@ header{
     justify-content: space-between;
     align-items: center;
 }
+
 header .project-name{
     font-size: 20px;
 }
+
+header .project-name p{
+    margin: 10px 0;
+}
+
+#gui-container {
+    width: 250px; 
+    height: 400px; 
+    overflow-y: auto; 
+    overflow-x: hidden;
+    position: fixed; 
+    top: 80px; 
+    right: 0;
+    background-color: transparent;
+}
+
+
 header .option-bar{
     display: flex;
     justify-content: space-between;
     column-gap: 20px;
 }
+
 header .option-bar .dropdown{
     width: 125px;
 }
+
 header .option-bar .dropdown .content p{
+    margin: 0;
+    padding: 10px 0;
     height: auto;
     font-size: 20px;
     cursor: pointer;
     text-align: center;
 }
+
 header .option-bar .dropdown .content:hover{
     background: #ffffff;
 }
+
 header .option-bar .dropdown p .bx{
     font-size: 15px;
 }
+
 header .option-bar button{
     border: none;
     background-color: #ffffff;
 }
+
 header .option-bar .dropdown .drop-content{
+    margin: 0;
     display: none;
     list-style: none;
     width: 125px;
     padding-inline-start: 0;
     background-color: #e2e1e1;
     position: absolute;
-    top: 6%;
-}
-header .option-bar .dropdown .drop-content li{
-    font-size: 15px;
-}
-header .option-bar .dropdown .drop-content li:hover{
-    background: #cbcbcb;
-}
-header .option-bar .dropdown:hover .drop-content {
-    display: block;
-}
-header .option-bar .dropdown:hover .content {
-    background-color: #e2e1e1;
 }
 
+header .option-bar .dropdown .drop-content .option_geometry{
+    padding: 2px 10px;
+}
+
+header .option-bar .dropdown .drop-content .texture{
+    padding: 2px 10px;
+}
+
+
+header .option-bar .dropdown .drop-content .light{
+    padding: 2px 10px;
+}
+
+header .option-bar .dropdown .drop-content .animation{
+    padding: 2px 10px;
+}
+
+header .option-bar .dropdown .drop-content li{
+    font-size: 15px;
+    cursor: pointer;
+}
+
+header .option-bar .dropdown .drop-content li:hover{
+    position: relative;
+    background: #cbcbcb;
+}
+
+header .option-bar .dropdown:hover .drop-content{
+    display: block;
+}
+
+header .option-bar .dropdown:hover .content{
+    background-color: #e2e1e1;
+}
 
 #container{
     position: relative;
 }
+
+.transform{
+    margin: 5px 0;
+}
+
 .transform #button{
     position: absolute;
     top: 10px;
     left: 10px;
 }
+
 .transform button{
-    margin-right: 10px;
+    margin: 0 5px;
 }
 
 header .option-bar .dropdown .drop-content li {
