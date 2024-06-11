@@ -112,7 +112,7 @@ header .option-bar .dropdown .drop-content li{
 
 header .option-bar .dropdown .drop-content li:hover{
     position: relative;
-    background: rgb(0,0,0, 1);
+    background-color: rgb(0,0,0, 1);
     border-radius: 0.5rem;
     transform: scale(1.1);
     color: white;

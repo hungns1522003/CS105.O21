@@ -216,7 +216,7 @@ function init() {
 
   // Light
   $(".light").click(function () {
-    if ($(this).text() == "Point Light" && hasLight === false) {
+    if ($(this).text() == "Add Light" && hasLight === false) {
       hasLight = true;
       scene.add(pointLight);
       scene.add(pointLightSphere);
@@ -570,9 +570,9 @@ function handleGeometryClick(event) {
       break;
     case "Shiba":
       let loadedModel;
-      const gltfLoader = new GLTFLoader();
+      var gltfLoader = new GLTFLoader();
       gltfLoader.load('./model/shiba/scene.gltf', (gltfScene) => {
-        const group = new THREE.Group();
+        var group = new THREE.Group();
         gltfScene.scene.children.forEach((child) => {
           child.traverse((node) => {
             if (node.isMesh) {
@@ -588,7 +588,6 @@ function handleGeometryClick(event) {
         group.scale.set(1, 1, 1);
 
         scene.add(group);
-
         array_mesh.push(group);
       });
       break;
