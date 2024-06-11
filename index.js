@@ -19,17 +19,21 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const controls = new OrbitControls(camera, renderer.domElement);
 const transformControls = new TransformControls(camera, renderer.domElement);
 const array_mesh = [];
+const rotate_animated_mesh = [];
+const upDown_aniated_mesh = [];
+const scale_animated_mesh = [];
+const orbit_animated_mesh = [];
+
 
 let rotateAnimation = false;
 let upDownAnimation = false;
-let scaleAnimation = false;
+let scaleAnimation = false
 let orbitAnimation = false;
 
 var hasLight = false;
 var transformActive = false;
 let currentObject = null;
 let objectTransformActive = false;
-let current_mesh = null;
 let choosedObject = null;
 
 let angle = 0;
@@ -78,6 +82,7 @@ function init() {
   const translateBtn = document.getElementById("translateBtn");
   const scaleBtn = document.getElementById("scaleBtn");
   const rotateBtn = document.getElementById("rotateBtn");
+  const delBtn = document.getElementById("delBtn");
 
   // Create function for buttons translate, scale, rotate
   // translateBtn
@@ -122,6 +127,19 @@ function init() {
     objectTransformActive = !objectTransformActive;
   });
 
+  // delBtn
+
+  delBtn.addEventListener("click", function() {
+    transformControls.detach();
+    scene.remove(choosedObject);
+    var index = array_mesh.indexOf(choosedObject);
+    if(index !== -1){
+      array_mesh.splice(index, 1);
+    }
+    choosedObject.geometry.dispose();
+    choosedObject.material.dispose();
+  });
+
   // Translate Light
   document.getElementById("translateLightBtn").addEventListener("click", () => {
     if (!transformActive) {
@@ -149,7 +167,6 @@ function init() {
     const intersects = raycaster.intersectObjects(array_mesh);
     if (intersects.length > 0) {
       choosedObject = intersects[0].object;
-      current_mesh = choosedObject;
       if (objectTransformActive) {
         transformControls.attach(choosedObject);
       }
